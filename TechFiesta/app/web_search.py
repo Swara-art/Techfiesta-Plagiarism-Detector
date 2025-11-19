@@ -1,38 +1,50 @@
-from tavily import TavilyClient
 import os
+import requests
 from dotenv import load_dotenv
 
 load_dotenv()
 
-TAVILY_API_KEY = os.getenv("TAVILY_API_KEY")  # Add to your .env file
+SERPER_API_KEY = os.getenv("SERPER_API_KEY")
 
-if not TAVILY_API_KEY:
-    raise ValueError("Missing TAVILY_API_KEY in environment variables")
+if not SERPER_API_KEY:
+    raise ValueError("Missing SERPER_API_KEY in .env file")
 
-client = TavilyClient(api_key=TAVILY_API_KEY)
+SEARCH_URL = "https://google.serper.dev/search"
 
 
 def fetch_web_snippets(query: str, max_results: int = 5) -> list[str]:
     """
-    Takes a sentence and returns web search snippets
-    that are semantically similar.
+    Sends the query to Serper.dev and retrieves web snippets.
+    Automatically trims long queries to avoid API issues.
     """
+
+    if len(query) > 280:
+        query = query[:280]  # Hard safety limit for Serper
+
+    payload = {
+        "q": query,
+        "num": max_results
+    }
+
+    headers = {
+        "X-API-KEY": SERPER_API_KEY,
+        "Content-Type": "application/json",
+    }
+
     try:
-        response = client.search(
-            query=query,
-            search_depth="advanced",    # gives better content
-            max_results=max_results,    # how many pages
-        )
+        response = requests.post(SEARCH_URL, json=payload, headers=headers)
+        response.raise_for_status()
+        data = response.json()
 
-        corpus = []
-        for item in response.get("results", []):
-            # Tavily gives: "content", "snippet", "title"
-            text = item.get("content") or item.get("snippet") or ""
-            if text.strip():
-                corpus.append(text)
+        # Extract organic search results
+        snippets = []
+        for item in data.get("organic", []):
+            text = item.get("snippet") or item.get("title")
+            if text and text.strip():
+                snippets.append(text.strip())
 
-        return corpus
+        return snippets
 
     except Exception as e:
-        print("Error fetching web results:", e)
+        print("Error fetching Serper.dev results:", e)
         return []

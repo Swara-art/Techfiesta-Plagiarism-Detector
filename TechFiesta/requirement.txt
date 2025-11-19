@@ -8,3 +8,5 @@ scikit-learn
 nltk
 radon
 tavily-python==0.3.8
+requests
+

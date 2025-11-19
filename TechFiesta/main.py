@@ -10,8 +10,8 @@ from app.text_analysis import perform_semantic_analysis
 from app.api import router
 from app.code_analysis import perform_code_analysis
 
-
-
+import os
+print(os.getenv("TAVILY_API_KEY"))
 
 #Create fastapi app
 app = FastAPI(title="Plagiarism Checker API", 
