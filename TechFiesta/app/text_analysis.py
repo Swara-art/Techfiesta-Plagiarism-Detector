@@ -110,7 +110,7 @@ def perform_web_plagiarism_analysis(submission_text: str) -> dict:
     sentences = sent_tokenize(submission_text)
 
     # Create sliding windows
-    windows = sliding_windows(sentences, window_size=3, max_chars=350)
+    windows = sliding_windows(sentences, window_size=2, max_chars=250)
 
     full_matches = []
     matched_windows = 0
@@ -144,26 +144,20 @@ def perform_web_plagiarism_analysis(submission_text: str) -> dict:
     }
 
 
-def sliding_windows(sentences, window_size=3, max_chars=350):
-    """
-    Generates overlapping sentence windows.
-    Example: window_size=3:
-       S1 S2 S3
-       S2 S3 S4
-       S3 S4 S5
-    """
+def sliding_windows(sentences, window_size=2, max_chars=250):
     windows = []
 
     for i in range(len(sentences) - window_size + 1):
         window = " ".join(sentences[i:i+window_size])
 
-        # Ensure Tavily query length limit
+        # Hard cap for Tavily
         if len(window) > max_chars:
             window = window[:max_chars]
 
         windows.append(window)
 
     return windows
+
 
 
 # 4. Backwards-compatible function you already use
