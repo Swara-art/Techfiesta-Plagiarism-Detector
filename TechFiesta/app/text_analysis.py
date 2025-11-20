@@ -176,3 +176,35 @@ def perform_semantic_analysis(extracted_text: str) -> dict:
     but internally goes through the generic engine.
     """
     return analyze_against_corpus(extracted_text, MOCK_CORPUS)
+
+# 4. Add local document plagiarism (the school corridor gossip phase)
+# Your tool only checks the web.
+# The next evolution:
+# upload multiple files
+# compare each against the others
+# detect internal plagiarism (student A copied from student B)
+# This is the feature that turns your system into something teachers genuinely want.
+
+# 1. Make the output human-readable (the storyteller phase)
+# Right now the system spits out JSON: helpful for machines, not so friendly for humans.
+# Your users (or judges, or professors) want something visual.
+# A nice next step:
+# Build a highlight-based report, like this:
+# Green = original
+# Yellow = partially similar
+# Red = highly similar
+# You could output:
+# a simple HTML report
+# downloadable PDF
+# side-by-side comparison view
+# It gives your tool a sense of “showmanship” — like a detective laying 
+# out clues on a corkboard instead of just handing you a spreadsheet.
+
+# 6. Add a “similarity summary” (the philosophy major phase)
+# After the system does all the technical stuff, ask your LLM to:
+# summarize which parts were matched
+# tell whether it looks like paraphrasing
+# explain where the content seems to be copied from
+# suggest improvements to make the text more original
+# This wakes the system up a bit — it starts offering opinions instead of just facts.
+
