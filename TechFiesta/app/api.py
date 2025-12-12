@@ -96,10 +96,12 @@ async def analyze_full_web(file: UploadFile = File(...)):
     file_bytes = await file.read()
     text = file_bytes.decode("utf-8", errors="ignore")
 
-    result = perform_web_plagiarism_analysis(text)
+    internal = perform_internal_plagiarism_analysis(extracted_text)
+    external = perform_external_plagiarism_analysis(extracted_text)
 
     return {
         "filename": file.filename,
-        "message": "Web plagiarism analysis complete.",
-        **result
+        "type": "text",
+        "internal_plagiarism": internal,
+        "external_plagiarism": external
     }

@@ -1,209 +1,161 @@
 import nltk
-from sentence_transformers import SentenceTransformer
-from sklearn.metrics.pairwise import cosine_similarity
 import numpy as np
 from functools import lru_cache
-from app.web_search import fetch_web_snippets
 from nltk import sent_tokenize
-from dotenv import load_dotenv
+from sentence_transformers import SentenceTransformer
+from sklearn.metrics.pairwise import cosine_similarity
 
-SIMILARITY_THRESHOLD = 0.85  
+from app.offline_corpus import search_offline_corpus
+from app.ddg_search import duckduckgo_search
+
+# -----------------------------
+# Configuration
+# -----------------------------
+
+SIMILARITY_THRESHOLD = 0.85
+MODEL_NAME = "paraphrase-multilingual-MiniLM-L12-v2"
 
 
-@lru_cache
+# -----------------------------
+# Model + NLP Setup
+# -----------------------------
+
+@lru_cache(maxsize=1)
 def get_model():
-    print("Loading semantic similarity model...")
-    model = SentenceTransformer('paraphrase-multilingual-MiniLM-L12-v2')
-    print("Model loaded successfully.")
+    print("Loading SentenceTransformer model...")
+    model = SentenceTransformer(MODEL_NAME)
+    print("Model loaded.")
     return model
 
 
 def ensure_nltk():
     try:
-        nltk.data.find('tokenizers/punkt')
+        nltk.data.find("tokenizers/punkt")
     except LookupError:
-        nltk.download('punkt')
-    try:
-        nltk.data.find('tokenizers/punkt_tab')
-    except LookupError:
-        nltk.download('punkt_tab')
+        nltk.download("punkt")
 
 
-def embed_sentences(sentences):
+# -----------------------------
+# Core Semantic Utility
+# -----------------------------
+
+def semantic_similarity(source_sentences: list[str], target_sentences: list[str]):
+    """
+    Compute semantic similarity between two sentence lists.
+    Returns list of matches above threshold.
+    """
     model = get_model()
-    return model.encode(sentences)
 
-def chunk_sentences(sentences, max_chars=350):
-    """
-    Groups sentences into chunks under the character limit.
-    """
-    chunks = []
-    current_chunk = ""
+    src_emb = model.encode(source_sentences)
+    tgt_emb = model.encode(target_sentences)
 
-    for sentence in sentences:
-        if len(current_chunk) + len(sentence) < max_chars:
-            current_chunk += " " + sentence
-        else:
-            chunks.append(current_chunk.strip())
-            current_chunk = sentence  # start new chunk
-
-    if current_chunk:
-        chunks.append(current_chunk.strip())
-
-    return chunks
-
-def analyze_against_corpus(submission_text: str, corpus: list[str]) -> dict:
-    """
-    Core engine: compare submission_text against an arbitrary corpus.
-    Later, 'corpus' can be:
-      - your MOCK_CORPUS
-      - web search snippets
-      - database docs
-    """
-    ensure_nltk()
-
-    # 1. Split submission into sentences
-    submission_sentences = nltk.sent_tokenize(submission_text)
-    if not submission_sentences:
-        return {
-            "message": "No sentences found to analyze.",
-            "matches": [],
-            "overall_originality_score": 100,
-            "total_sentences": 0,
-            "sentences_with_matches": 0,
-        }
-
-    # 2. Embed both submission and corpus
-    submission_embeddings = embed_sentences(submission_sentences)
-    corpus_embeddings = embed_sentences(corpus)
-
-    # 3. Similarity matrix
-    sim_matrix = cosine_similarity(submission_embeddings, corpus_embeddings)
+    sim_matrix = cosine_similarity(src_emb, tgt_emb)
 
     matches = []
-    for i, sub_sentence in enumerate(submission_sentences):
-        scores_for_sentence = sim_matrix[i]
-        best_match_index = int(np.argmax(scores_for_sentence))
-        best_score = float(scores_for_sentence[best_match_index])
+    for i, src_sentence in enumerate(source_sentences):
+        best_idx = int(np.argmax(sim_matrix[i]))
+        best_score = float(sim_matrix[i][best_idx])
 
-        if best_score > SIMILARITY_THRESHOLD:
+        if best_score >= SIMILARITY_THRESHOLD:
             matches.append({
-                "type": "semantic_match",
-                "submission_text": sub_sentence,
-                "source_text": corpus[best_match_index],
-                "similarity": round(best_score, 4),
+                "sentence": src_sentence,
+                "matched_text": target_sentences[best_idx],
+                "similarity": round(best_score, 4)
             })
 
-    original_sentences = len(submission_sentences) - len(matches)
-    overall_originality = (original_sentences / len(submission_sentences)) * 100
+    return matches
+
+
+# -----------------------------
+# INTERNAL PLAGIARISM
+# Offline corpus vs uploaded doc
+# -----------------------------
+
+def perform_internal_plagiarism_analysis(text: str) -> dict:
+    ensure_nltk()
+    sentences = sent_tokenize(text)
+
+    matches = []
+    for sentence in sentences:
+        corpus_matches = search_offline_corpus(sentence, threshold=SIMILARITY_THRESHOLD)
+        if corpus_matches:
+            matches.append({
+                "sentence": sentence,
+                "matches": corpus_matches
+            })
+
+    originality = 100.0
+    if sentences:
+        originality = round(
+            (1 - len(matches) / len(sentences)) * 100, 2
+        )
 
     return {
-        "overall_originality_score": round(overall_originality, 2),
-        "total_sentences": len(submission_sentences),
-        "sentences_with_matches": len(matches),
-        "matches": matches,
+        "type": "internal_plagiarism",
+        "overall_originality_score": originality,
+        "total_sentences": len(sentences),
+        "sentences_flagged": len(matches),
+        "matches": matches
     }
-    
-def perform_web_plagiarism_analysis(submission_text: str) -> dict:
+
+
+# -----------------------------
+# EXTERNAL PLAGIARISM
+# DuckDuckGo + semantic matching
+# -----------------------------
+
+def perform_external_plagiarism_analysis(text: str) -> dict:
     ensure_nltk()
+    model = get_model()
 
-    sentences = sent_tokenize(submission_text)
+    sentences = sent_tokenize(text)
+    matches = []
 
-    # Create sliding windows
-    windows = sliding_windows(sentences, window_size=2, max_chars=250)
-
-    full_matches = []
-    matched_windows = 0
-
-    for window in windows:
-        web_corpus = fetch_web_snippets(window)
-
-        if not web_corpus:
+    for sentence in sentences:
+        web_snippets = duckduckgo_search(sentence, max_results=5)
+        if not web_snippets:
             continue
 
-        # Compare window against fetched results
-        result = analyze_against_corpus(window, web_corpus)
+        sent_emb = model.encode([sentence])
+        web_emb = model.encode(web_snippets)
 
-        if result["sentences_with_matches"] > 0:
-            matched_windows += 1
-            full_matches.extend(result["matches"])
+        sims = cosine_similarity(sent_emb, web_emb)[0]
 
-    total_windows = len(windows)
-    originality = (
-        100 if total_windows == 0 
-        else round((1 - matched_windows / total_windows) * 100, 2)
-    )
+        for idx, score in enumerate(sims):
+            if score >= SIMILARITY_THRESHOLD:
+                matches.append({
+                    "sentence": sentence,
+                    "source_text": web_snippets[idx],
+                    "similarity": round(float(score), 4)
+                })
+
+    originality = 100.0
+    if sentences:
+        originality = round(
+            (1 - len(matches) / len(sentences)) * 100, 2
+        )
 
     return {
-        "type": "internet_check",
+        "type": "external_plagiarism",
         "overall_originality_score": originality,
-        "matches_found": len(full_matches),
-        "matches": full_matches,
-        "total_windows": total_windows,
-        "windows_flagged": matched_windows,
+        "total_sentences": len(sentences),
+        "matches_found": len(matches),
+        "matches": matches
     }
 
 
-def sliding_windows(sentences, window_size=2, max_chars=250):
-    windows = []
+# -----------------------------
+# UNIFIED ENTRY (optional helper)
+# -----------------------------
 
-    for i in range(len(sentences) - window_size + 1):
-        window = " ".join(sentences[i:i+window_size])
-
-        # Hard cap for Tavily
-        if len(window) > max_chars:
-            window = window[:max_chars]
-
-        windows.append(window)
-
-    return windows
-
-
-MOCK_CORPUS = [
-    "The mitochondria is the powerhouse of the cell.",
-    "A complicated web of interconnected systems makes up the global economy.",
-    "Python is an interpreted, high-level, general-purpose programming language.",
-    "Photosynthesis is a process used by plants and other organisms to convert light energy into chemical energy.",
-    "The French Revolution was a period of far-reaching social and political upheaval in France."
-]
-
-def perform_semantic_analysis(extracted_text: str) -> dict:
+def perform_text_plagiarism_analysis(text: str) -> dict:
     """
-    Basic offline semantic plagiarism analysis using MOCK_CORPUS.
+    Runs both internal and external plagiarism checks.
     """
-    return analyze_against_corpus(extracted_text, MOCK_CORPUS)
+    internal = perform_internal_plagiarism_analysis(text)
+    external = perform_external_plagiarism_analysis(text)
 
-
-# Next Steps Suggestions:
-
-# 4. Add local document plagiarism (the school corridor gossip phase)
-# Your tool only checks the web.
-# The next evolution:
-# upload multiple files
-# compare each against the others
-# detect internal plagiarism (student A copied from student B)
-# This is the feature that turns your system into something teachers genuinely want.
-
-# 1. Make the output human-readable (the storyteller phase)
-# Right now the system spits out JSON: helpful for machines, not so friendly for humans.
-# Your users (or judges, or professors) want something visual.
-# A nice next step:
-# Build a highlight-based report, like this:
-# Green = original
-# Yellow = partially similar
-# Red = highly similar
-# You could output:
-# a simple HTML report
-# downloadable PDF
-# side-by-side comparison view
-# It gives your tool a sense of “showmanship” — like a detective laying 
-# out clues on a corkboard instead of just handing you a spreadsheet.
-
-# 6. Add a “similarity summary” (the philosophy major phase)
-# After the system does all the technical stuff, ask your LLM to:
-# summarize which parts were matched
-# tell whether it looks like paraphrasing
-# explain where the content seems to be copied from
-# suggest improvements to make the text more original
-# This wakes the system up a bit — it starts offering opinions instead of just facts.
-
+    return {
+        "internal_plagiarism": internal,
+        "external_plagiarism": external
+    }
