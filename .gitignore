@@ -5,7 +5,6 @@ __pycache__/
 
 # Generated plagiarism data
 TechFiesta/data/offline_corpus.json
-TechFiesta/data/raw_articles/
 TechFiesta/data/*.json
 
 # Optional (Python noise)
