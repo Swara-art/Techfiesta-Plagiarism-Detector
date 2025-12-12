@@ -6,7 +6,6 @@ import docx
 import io
 import mimetypes
 from app.utils import extract_text_from_pdf, extract_text_from_docx, extract_text_from_txt
-from app.text_analysis import perform_semantic_analysis
 from app.api import router
 from app.code_analysis import perform_code_analysis
 
