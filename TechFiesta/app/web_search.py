@@ -4,47 +4,37 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-SERPER_API_KEY = os.getenv("SERPER_API_KEY")
+SEARCHAPI_KEY = os.getenv("SEARCHAPI_KEY")
 
-if not SERPER_API_KEY:
-    raise ValueError("Missing SERPER_API_KEY in .env file")
+if not SEARCHAPI_KEY:
+    raise ValueError("SEARCHAPI_KEY not found in environment variables")
 
-SEARCH_URL = "https://google.serper.dev/search"
+SEARCH_URL = "https://www.searchapi.io/api/v1/search"
 
-
-def fetch_web_snippets(query: str, max_results: int = 5) -> list[str]:
-    """
-    Sends the query to Serper.dev and retrieves web snippets.
-    Automatically trims long queries to avoid API issues.
-    """
-
-    if len(query) > 280:
-        query = query[:280]  # Hard safety limit for Serper
-
-    payload = {
-        "q": query,
-        "num": max_results
-    }
-
+def fetch_web_snippets(query: str, num_results: int = 5):
     headers = {
-        "X-API-KEY": SERPER_API_KEY,
-        "Content-Type": "application/json",
+        "Authorization": f"Bearer {SEARCHAPI_KEY}"
     }
-
+    params = {
+        "q": query,
+        "engine": "google",
+        "num": num_results
+    }
+    
     try:
-        response = requests.post(SEARCH_URL, json=payload, headers=headers)
+        response = requests.get(SEARCH_URL, headers=headers, params=params)
         response.raise_for_status()
-        data = response.json()
-
-        # Extract organic search results
+        data  = response.json()
+        
         snippets = []
-        for item in data.get("organic", []):
-            text = item.get("snippet") or item.get("title")
-            if text and text.strip():
-                snippets.append(text.strip())
+        for item in data.get("organic_results", []):
+            snippet = item.get("snippet") or item.get("title")
+            if snippet:
+                snippets.append(snippet.strip())
 
         return snippets
-
+    
     except Exception as e:
-        print("Error fetching Serper.dev results:", e)
+        print("Error fetching SearchAPI.io results:", e)
         return []
+    
