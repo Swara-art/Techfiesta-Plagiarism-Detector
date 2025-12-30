@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Depends
 from app.schemas.analysis import AnalyzeRequest, AnalyzeResponse
 from app.services.storage.file_store import FileStore
 from app.services.preprocessing.extract_text import extract_text_from_assignment
@@ -8,10 +8,18 @@ from app.services.report.report_builder import build_report
 
 router = APIRouter()
 store = FileStore()
-sim_engine = TextSimilarityEngine()
+
+
+# ✅ Dependency – created AFTER startup
+def get_text_similarity_engine():
+    return TextSimilarityEngine()
+
 
 @router.post("/run", response_model=AnalyzeResponse)
-def run_analysis(payload: AnalyzeRequest):
+def run_analysis(
+    payload: AnalyzeRequest,
+    sim_engine: TextSimilarityEngine = Depends(get_text_similarity_engine)
+):
     assignment_dir = store.get_assignment_dir(payload.assignment_id)
     if not assignment_dir:
         raise HTTPException(status_code=404, detail="Assignment not found")
@@ -22,9 +30,11 @@ def run_analysis(payload: AnalyzeRequest):
     sentences = segment_sentences(text)
     print("✂️ Segmented sentences:", sentences)
 
-
     # core semantic check
     matches = sim_engine.check_sentences(sentences)
 
     report = build_report(sentences=sentences, matches=matches)
-    return AnalyzeResponse(assignment_id=payload.assignment_id, report=report)
+    return AnalyzeResponse(
+        assignment_id=payload.assignment_id,
+        report=report
+    )
