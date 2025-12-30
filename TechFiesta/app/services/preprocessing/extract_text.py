@@ -18,3 +18,5 @@ def extract_text_from_assignment(assignment_dir: str) -> str:
 
     with open(path, "r", encoding="utf-8", errors="ignore") as f:
         return f.read().strip()
+    
+
