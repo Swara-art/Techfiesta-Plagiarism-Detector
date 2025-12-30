@@ -1,12 +1,8 @@
 import chromadb
-from chromadb.config import Settings
-
-CHROMA_PATH = "db/chroma/"
 
 def get_chroma_client():
-    return chromadb.Client(
-        Settings(
-            persist_directory=CHROMA_PATH,
-            anonymized_telemetry=False
-        )
+    return chromadb.CloudClient(
+        api_key="ck-AtF4guC5v8zdP3geoMBUBeA6XBge1spmkzV2wNFUX7WP",
+        tenant="131e8c3e-b60b-4906-80e6-a4a266fe5a27",
+        database="Plagiarism"
     )
