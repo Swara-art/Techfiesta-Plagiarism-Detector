@@ -10,20 +10,20 @@ store = FileStore()
 
 @router.post("/upload", response_model=AssignmentCreateResponse)
 async def upload_assignment(file: UploadFile = File(...)):
-    # 1️⃣ Read file ONCE
+    # Read file ONCE
     file_bytes = await file.read()
 
-    # 2️⃣ Save file
+    # Save file
     await file.seek(0)
     assignment_id = await store.save_upload(file)
 
-    # 3️⃣ Extract text (TXT / PDF / OCR)
+    # Extract text (TXT / PDF / OCR)
     text = extract_text_from_bytes(file.filename, file_bytes)
-    print("📝 Extracted text length:", len(text))
+    print("Extracted text length:", len(text))
 
-    # 4️⃣ Segment sentences
+    # Segment sentences
     sentences = segment_sentences(text)
-    print("✂️ Segmented sentences:", len(sentences))
+    print("Segmented sentences:", len(sentences))
 
     return AssignmentCreateResponse(
         assignment_id=assignment_id,
