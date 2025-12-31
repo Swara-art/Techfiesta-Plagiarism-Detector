@@ -6,3 +6,4 @@ class AssignmentCreateResponse(BaseModel):
     filename: str
     total_sentences: int
     preview_sentences: list[str]
+    status: str | None = None

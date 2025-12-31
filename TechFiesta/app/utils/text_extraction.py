@@ -1,6 +1,7 @@
 from fastapi import HTTPException
 from io import BytesIO
 import pdfplumber
+from pathlib import Path
 
 MIN_TEXT_LENGTH = 50
 
@@ -60,3 +61,20 @@ def _extract_pdf_text_ocr(file_bytes: bytes) -> str:
 
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"OCR failed: {e}")
+
+def extract_text_from_file(file_path: Path) -> str:
+    suffix = file_path.suffix.lower()
+
+    if suffix == ".txt":
+        return file_path.read_text(encoding="utf-8", errors="ignore")
+
+    if suffix == ".pdf":
+        text = []
+        with pdfplumber.open(file_path) as pdf:
+            for page in pdf.pages:
+                page_text = page.extract_text()
+                if page_text:
+                    text.append(page_text)
+        return "\n".join(text)
+
+    raise ValueError(f"Unsupported file type: {suffix}")

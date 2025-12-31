@@ -1,40 +1,57 @@
-from fastapi import APIRouter, HTTPException, Depends
-from app.schemas.analysis import AnalyzeRequest, AnalyzeResponse
-from app.services.storage.file_store import FileStore
-from app.services.preprocessing.extract_text import extract_text_from_assignment
-from app.services.preprocessing.segment import segment_sentences
-from app.services.analysis.text_similarity import TextSimilarityEngine
-from app.services.report.report_builder import build_report
+from fastapi import APIRouter, HTTPException
+from pathlib import Path
+import logging
+
+from app.db.chroma_client import get_chroma_client
+from app.services.plagiarism.exact_match import (
+    get_exact_match_collection,
+    check_exact_match
+)
+from app.services.analysis.text_similarity import segment_sentences
 
 router = APIRouter()
-store = FileStore()
+logger = logging.getLogger(__name__)
 
 
-# ✅ Dependency – created AFTER startup
-def get_text_similarity_engine():
-    return TextSimilarityEngine()
+@router.post("/run")
+def run_analysis(assignment_id: str):
+    upload_dir = Path(f"data/uploads/{assignment_id}")
+    extracted_path = upload_dir / "extracted.txt"
 
+    if not extracted_path.exists():
+        raise HTTPException(status_code=400, detail="Extracted text not found")
 
-@router.post("/run", response_model=AnalyzeResponse)
-def run_analysis(
-    payload: AnalyzeRequest,
-    sim_engine: TextSimilarityEngine = Depends(get_text_similarity_engine)
-):
-    assignment_dir = store.get_assignment_dir(payload.assignment_id)
-    if not assignment_dir:
-        raise HTTPException(status_code=404, detail="Assignment not found")
+    # 1️⃣ Load extracted text
+    text = extracted_path.read_text(encoding="utf-8")
 
-    text = extract_text_from_assignment(assignment_dir)
-    print("📝 Extracted text:", repr(text))
-
+    # 2️⃣ Sentence segmentation
     sentences = segment_sentences(text)
-    print("✂️ Segmented sentences:", sentences)
+    total_sentences = len(sentences)
 
-    # core semantic check
-    matches = sim_engine.check_sentences(sentences)
+    logger.info(f"Segmented sentences: {total_sentences}")
 
-    report = build_report(sentences=sentences, matches=matches)
-    return AnalyzeResponse(
-        assignment_id=payload.assignment_id,
-        report=report
-    )
+    # 3️⃣ Stage 3: Exact Match
+    client = get_chroma_client()
+    collection = get_exact_match_collection(client)
+
+    exact_matches = check_exact_match(collection, sentences)
+
+    # 4️⃣ Build REQUIRED report object
+    report = {
+        "overall_originality_score": (
+            100 if total_sentences == 0
+            else round(
+                100 * (1 - len(exact_matches) / total_sentences),
+                2
+            )
+        ),
+        "total_sentences": total_sentences,
+        "sentences_flagged": len(exact_matches),
+        "items": exact_matches
+    }
+
+    # 5️⃣ RETURN WHAT THE RESPONSE MODEL EXPECTS
+    return {
+        "assignment_id": assignment_id,
+        "report": report
+    }

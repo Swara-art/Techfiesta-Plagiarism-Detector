@@ -1,50 +1,43 @@
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Any
 import chromadb
 from chromadb.config import Settings
 
 from app.services.preprocessing.normalize import normalize_and_hash
 
-#Chroma Initialization
+# Chroma Initialization
 
-def get_chroma_client(persist_dir: str) -> chromadb.Client:
+def get_chroma_client(persist_dir: str):
     return chromadb.Client(
         Settings(
             persist_directory=persist_dir,
             anonymized_telemetry=False
         )
     )
-    
-def get_exact_match_collection(client: chromadb.Client):
+
+
+def get_exact_match_collection(client):
     return client.get_or_create_collection(
         name="exact_sentence_index",
-        metadata={"purpose": "exact_match_plagiarism"}
+        metadata={"type": "exact_match"}
     )
-    
-# Corpus Ingestion (Offline)
+
+# Corpus Ingestion
 
 def ingest_corpus_sentences(
     collection,
     sentences: List[str],
-    document_id: str,
-    source: str = "internal"
-) -> None:
+    document_id: str
+):
+    ids, documents, metadatas = [], [], []
 
-    ids = []
-    documents = []
-    metadatas = []
-
-    for sentence in sentences:
-        normalized, sentence_hash = normalize_and_hash(sentence)
-
-        if not normalized or not sentence_hash:
+    for s in sentences:
+        normalized, h = normalize_and_hash(s)
+        if not normalized:
             continue
 
-        ids.append(sentence_hash)
+        ids.append(h)
         documents.append(normalized)
-        metadatas.append({
-            "document_id": document_id,
-            "source": source
-        })
+        metadatas.append({"document_id": document_id})
 
     if ids:
         collection.add(
@@ -52,32 +45,31 @@ def ingest_corpus_sentences(
             documents=documents,
             metadatas=metadatas
         )
-        
-# Runtime Lookup (User Upload)
+
+# Runtime Exact Match
+
 
 def check_exact_match(
     collection,
     sentences: List[str]
 ) -> List[Dict[str, Any]]:
-    
-    results = []
+    matches = []
 
-    for sentence in sentences:
-        normalized, sentence_hash = normalize_and_hash(sentence)
-
-        if not normalized or not sentence_hash:
+    for s in sentences:
+        normalized, h = normalize_and_hash(s)
+        if not normalized:
             continue
 
-        lookup = collection.get(ids=[sentence_hash])
+        result = collection.get(ids=[h])
 
-        if lookup and lookup.get("ids"):
-            results.append({
-                "sentence": sentence,
-                "normalized_sentence": normalized,
-                "sentence_hash": sentence_hash,
-                "type": "exact_match",
+        if result and result.get("ids"):
+            matches.append({
+                "sentence": s,
+                "normalized": normalized,
+                "hash": h,
                 "confidence": 1.0,
-                "matches": lookup.get("metadatas", [])
+                "type": "exact_match",
+                "sources": result["metadatas"]
             })
 
-    return results
+    return matches

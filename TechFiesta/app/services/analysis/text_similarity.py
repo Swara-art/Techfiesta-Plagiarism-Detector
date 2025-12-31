@@ -1,6 +1,18 @@
 from typing import List, Dict, Any
 from sentence_transformers import SentenceTransformer
 from app.db.chroma_collections import get_collection
+import re
+from typing import List
+
+_SENTENCE_SPLIT_REGEX = re.compile(r'(?<=[.!?])\s+')
+
+
+def segment_sentences(text: str) -> List[str]:
+    if not text:
+        return []
+
+    sentences = _SENTENCE_SPLIT_REGEX.split(text)
+    return [s.strip() for s in sentences if s.strip()]
 
 
 class TextSimilarityEngine:
