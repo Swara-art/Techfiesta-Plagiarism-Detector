@@ -1,0 +1,3 @@
+Machine learning is a field of artificial intelligence that enables systems to learn from data.
+It helps computers improve their performance without being explicitly programmed.
+There are different types of learning techniques used in machine learning.

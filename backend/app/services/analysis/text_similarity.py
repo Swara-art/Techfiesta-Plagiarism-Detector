@@ -1,53 +1,69 @@
-from typing import List, Dict, Any
-from sentence_transformers import SentenceTransformer
-from app.db.chroma_collections import get_collection
-import re
+# app/services/analysis/text_similarity.py
 from typing import List
+from sentence_transformers import SentenceTransformer
+import re
 
 _SENTENCE_SPLIT_REGEX = re.compile(r'(?<=[.!?])\s+')
 
-
 def segment_sentences(text: str) -> List[str]:
-    if not text:
-        return []
-
-    sentences = _SENTENCE_SPLIT_REGEX.split(text)
-    return [s.strip() for s in sentences if s.strip()]
+    return [s.strip() for s in _SENTENCE_SPLIT_REGEX.split(text) if s.strip()]
 
 
-class TextSimilarityEngine:
+class EmbeddingService:
     def __init__(self):
-        self.model = SentenceTransformer(
-            "sentence-transformers/all-MiniLM-L6-v2"
-        )
-        self.collection = get_collection("student_text")
-        self.threshold = 0.85
+        self.model = SentenceTransformer("all-MiniLM-L6-v2")
 
-    def check_sentences(self, sentences: List[str]) -> List[Dict[str, Any]]:
-        if not sentences:
-            return []
+    def embed(self, sentence: str) -> list[float]:
+        return self.model.encode(
+            sentence,
+            normalize_embeddings=True
+        ).tolist()
 
-        embeddings = self.model.encode(sentences, convert_to_numpy=True)
 
-        results = self.collection.query(
-            query_embeddings=embeddings.tolist(),
-            n_results=1
-        )
+SIMILARITY_THRESHOLD = 0.72  # 🔥 FIXED (0.75 was borderline)
 
-        matches = []
 
-        for i, distances in enumerate(results["distances"]):
-            if not distances:
-                continue
+class SemanticSimilarityService:
+    def __init__(self, chroma_client):
+        self.chroma = chroma_client
+        self.embedder = EmbeddingService()
 
-            similarity = 1 - distances[0]  # cosine distance → similarity
+        count = self.chroma.collection.count()
+        if count == 0:
+            raise RuntimeError("Corpus collection is EMPTY")
 
-            if similarity >= self.threshold:
-                matches.append({
-                    "sentence_id": i,
-                    "score": round(similarity, 3),
-                    "matched_text": results["documents"][i][0],
-                    "source": results["metadatas"][i][0].get("source")
+    def analyze(self, sentences: list[str]):
+        results = []
+
+        for sentence in sentences:
+            embedding = self.embedder.embed(sentence)
+
+            matches = self.chroma.query(embedding, top_k=3)
+
+            flagged = []
+
+            for doc, meta, dist in zip(
+                matches["documents"][0],
+                matches["metadatas"][0],
+                matches["distances"][0],
+            ):
+                similarity = 1 - dist
+
+                # 🔐 STRICT corpus-only check
+                if meta.get("type") != "corpus":
+                    continue
+
+                if similarity >= SIMILARITY_THRESHOLD:
+                    flagged.append({
+                        "matched_text": doc,
+                        "source": meta["source"],
+                        "similarity": round(similarity, 3),
+                    })
+
+            if flagged:
+                results.append({
+                    "sentence": sentence,
+                    "matches": flagged
                 })
 
-        return matches
+        return results

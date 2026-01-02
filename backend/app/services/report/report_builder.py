@@ -1,36 +1,28 @@
-from typing import List, Dict, Any
+from datetime import datetime
 
-def build_report(sentences: List[str], matches: List[Dict[str, Any]]) -> Dict[str, Any]:
-    flagged = {m["sentence_id"]: m for m in matches}
-
-    items = []
-    for idx, s in enumerate(sentences):
-        if idx in flagged:
-            m = flagged[idx]
-            items.append({
-                "sentence_id": idx,
-                "text": s,
-                "flagged": True,
-                "reason": "high_semantic_similarity",
-                "similarity": m["score"],
-                "matched_source": m["source"],
-                "matched_text": m["matched_source_text"],
-                "citation_required": True
-            })
-        else:
-            items.append({
-                "sentence_id": idx,
-                "text": s,
-                "flagged": False
-            })
-
-    total = len(sentences) if sentences else 1
-    flagged_count = len(matches)
-    originality = round(100.0 * (1 - (flagged_count / total)), 2)
+def build_report(
+    assignment_id: str,
+    semantic_matches: list[dict],
+    score: dict
+) -> dict:
 
     return {
-        "overall_originality_score": originality,
-        "total_sentences": len(sentences),
-        "sentences_flagged": flagged_count,
-        "items": items
+        "assignment_id": assignment_id,
+        "analysis_type": "semantic_similarity",
+        "generated_at": datetime.utcnow().isoformat(),
+
+        "summary": {
+            "overall_originality_score": score["originality_score"],
+            "plagiarism_score": score["plagiarism_score"],
+            "total_sentences": score["total_sentences"],
+            "sentences_flagged": score["sentences_flagged"],
+        },
+
+        "flagged_items": [
+            {
+                "sentence": item["sentence"],
+                "matches": item["matches"],
+            }
+            for item in semantic_matches
+        ],
     }
