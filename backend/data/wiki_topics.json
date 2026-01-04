@@ -1,0 +1,46 @@
+{
+  "machine_learning": [
+    "Machine learning",
+    "Supervised learning",
+    "Unsupervised learning",
+    "Reinforcement learning",
+    "Classification (machine learning)",
+    "Regression analysis",
+    "Clustering",
+    "Feature engineering",
+    "Overfitting",
+    "Bias–variance tradeoff"
+  ],
+
+  "deep_learning": [
+    "Deep learning",
+    "Neural network",
+    "Artificial neural network",
+    "Convolutional neural network",
+    "Recurrent neural network",
+    "Transformer (machine learning)",
+    "Backpropagation",
+    "Activation function",
+    "Loss function"
+  ],
+
+  "artificial_intelligence": [
+    "Artificial intelligence",
+    "Knowledge representation",
+    "Expert system",
+    "Planning (artificial intelligence)",
+    "Natural language processing",
+    "Computer vision",
+    "Intelligent agent"
+  ],
+
+  "data_science": [
+    "Data science",
+    "Data analysis",
+    "Data mining",
+    "Big data",
+    "Exploratory data analysis",
+    "Statistical inference",
+    "Data visualization"
+  ]
+}
