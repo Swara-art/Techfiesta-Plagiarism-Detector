@@ -37,6 +37,15 @@ class SemanticSimilarityService:
     def analyze(self, sentences: List[str]) -> List[Dict[str, Any]]:
         results: List[Dict[str, Any]] = []
 
+        # check corpus ONCE
+        corpus_count = self.chroma.collection.count()
+        if corpus_count == 0:
+            raise RuntimeError("Corpus collection is EMPTY")
+
+        # early exit for empty input
+        if not sentences:
+            return results
+
         for idx, sentence in enumerate(sentences):
             embedding = self.embedder.embed(sentence)
             matches = self.chroma.query(embedding, top_k=3)
@@ -64,25 +73,22 @@ class SemanticSimilarityService:
             if not flagged_matches:
                 continue
 
-            # sentence-level confidence = best match similarity
             best = max(flagged_matches, key=lambda m: m["similarity"])
 
-            # decide type for scoring
-            flag_type = "exact_match" if best["similarity"] >= EXACT_MATCH_THRESHOLD else "semantic"
+            flag_type = (
+                "exact_match"
+                if best["similarity"] >= EXACT_MATCH_THRESHOLD
+                else "semantic"
+            )
 
             results.append({
                 "sentence_id": idx,
                 "sentence": sentence,
-                "type": flag_type,                 
-                "confidence": best["similarity"],  
-                "source": best["source"],          
-                "matches": flagged_matches         
+                "type": flag_type,
+                "confidence": best["similarity"],
+                "source": best["source"],
+                "matches": flagged_matches,
             })
-            
-            count = self.chroma.collection.count()
-        
-        if count == 0:
-            raise RuntimeError("Corpus collection is EMPTY")
 
         return results
     
