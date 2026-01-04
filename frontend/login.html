@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - PlagiCheck AI | PixelCrafters</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <!-- Header -->
+    <header class="header">
+        <nav class="nav-container">
+            <div class="logo">
+                <i class="fas fa-shield-alt"></i>
+                PlagiCheck AI
+            </div>
+            <ul class="nav-menu">
+                <li><a href="index.html">Home</a></li>
+                <li><a href="dashboard.html">Dashboard</a></li>
+                <li><a href="upload.html">Upload</a></li>
+            </ul>
+            <div class="mobile-toggle" onclick="toggleMobileMenu()">
+                <i class="fas fa-bars"></i>
+            </div>
+        </nav>
+    </header>
+
+    <!-- Login Form -->
+    <section class="auth-container">
+        <div class="auth-card">
+            <div style="text-align: center; margin-bottom: 2rem;">
+                <i class="fas fa-shield-alt" style="font-size: 3rem; color: var(--primary);"></i>
+            </div>
+            <h2><i class="fas fa-sign-in-alt"></i> Welcome Back</h2>
+            <p style="text-align: center; color: #6b7280; margin-bottom: 2rem;">
+                Sign in to your PixelCrafters PlagiCheck account
+            </p>
+            
+            <form id="loginForm">
+                <div class="form-group">
+                    <label><i class="fas fa-envelope"></i> Email</label>
+                    <input type="email" id="loginEmail" placeholder="Enter your email" required>
+                </div>
+                <div class="form-group">
+                    <label><i class="fas fa-lock"></i> Password</label>
+                    <input type="password" id="loginPassword" placeholder="Enter your password" required>
+                </div>
+                <button type="submit" class="btn btn-primary" id="loginBtn">
+                    <i class="fas fa-arrow-right"></i> Sign In
+                </button>
+            </form>
+            
+            <div style="text-align: center; margin-top: 1.5rem; padding-top: 1.5rem; border-top: 1px solid #e2e8f0;">
+                <p style="color: #6b7280; margin-bottom: 1.2rem;">New to PlagiCheck?</p>
+                <a href="signup.html" class="btn" style="background: var(--secondary); color: white; text-decoration: none; padding: 1rem;">
+                    <i class="fas fa-user-plus"></i> Create New Account
+                </a>
+            </div>
+            
+            <div id="loginMessage" style="margin-top: 1rem; text-align: center; display: none;"></div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="footer-content">
+            <div class="footer-section">
+                <h3><i class="fas fa-shield-alt"></i> PlagiCheck AI</h3>
+                <p><strong>PixelCrafters</strong> - Hackathon 2026</p>
+            </div>
+        </div>
+        <div class="footer-bottom">
+            <p>&copy; 2026 PixelCrafters. All rights reserved. | Hackathon Project</p>
+        </div>
+    </footer>
+
+    <script>
+    // Login Form Handler (unchanged)
+    document.getElementById('loginForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        
+        const email = document.getElementById('loginEmail').value;
+        const password = document.getElementById('loginPassword').value;
+        const loginBtn = document.getElementById('loginBtn');
+        const messageDiv = document.getElementById('loginMessage');
+        
+        // Show loading
+        loginBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Signing In...';
+        loginBtn.disabled = true;
+        messageDiv.style.display = 'none';
+        
+        // Check credentials
+        setTimeout(() => {
+            const userData = JSON.parse(localStorage.getItem('plagicheck_users') || '[]');
+            const user = userData.find(u => u.email === email && u.password === password);
+            
+            if (user) {
+                // Login successful
+                localStorage.setItem('plagicheck_user', JSON.stringify(user));
+                messageDiv.innerHTML = '<div style="color: var(--secondary);"><i class="fas fa-check-circle"></i> Login successful! Redirecting...</div>';
+                messageDiv.style.display = 'block';
+                
+                setTimeout(() => {
+                    window.location.href = 'dashboard.html';
+                }, 1500);
+            } else {
+                // Login failed
+                messageDiv.innerHTML = '<div style="color: #ef4444;"><i class="fas fa-exclamation-circle"></i> Invalid email or password</div>';
+                messageDiv.style.display = 'block';
+                loginBtn.innerHTML = '<i class="fas fa-arrow-right"></i> Try Again';
+                loginBtn.disabled = false;
+            }
+        }, 1500);
+    });
+
+    // REMOVED: No auto-redirect on login page
+</script>
+
+</body>
+</html>

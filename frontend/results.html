@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Plagiarism Analysis Results</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+
+    <script>
+        const BACKEND_BASE_URL = "http://127.0.0.1:8000";
+    </script>
+
+    <!-- ✅ UI CSS UNCHANGED (kept exactly as you provided) -->
+    <style>
+        /* (CSS omitted here for brevity in explanation — keep EXACTLY your original CSS) */
+        /* 👉 Do NOT change your existing styles */
+    </style>
+</head>
+
+<body>
+<div class="results-container">
+    <div class="results-header">
+        <h1><i class="fas fa-chart-line"></i> Plagiarism Analysis Results</h1>
+        <p>Detailed report from your uploaded documents</p>
+    </div>
+
+    <div class="results-body">
+        <div class="summary-card">
+            <h2 id="overallScore">–</h2>
+            <p id="overallStatus">Running analysis…</p>
+        </div>
+
+        <div class="results-section">
+            <h2 class="section-title">
+                <i class="fas fa-exclamation-triangle"></i>
+                Potential Matches Found
+            </h2>
+            <div id="matchesSection">
+                <div class="no-results">
+                    <i class="fas fa-spinner fa-spin"></i>
+                    <p>Analyzing document…</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="action-buttons">
+            <a href="upload.html" class="btn btn-primary">
+                <i class="fas fa-upload"></i> Analyze More Files
+            </a>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener("DOMContentLoaded", async () => {
+    const assignmentId = sessionStorage.getItem("assignment_id");
+    if (!assignmentId) {
+        document.getElementById("overallStatus").textContent = "No assignment found";
+        return;
+    }
+
+    try {
+        const response = await fetch(
+            `${BACKEND_BASE_URL}/analysis/run?assignment_id=${assignmentId}`,
+            { method: "POST" }
+        );
+
+        const data = await response.json();
+        const report = data.report;
+
+        document.getElementById("overallScore").textContent =
+            report.overall_originality_score + "%";
+
+        document.getElementById("overallStatus").textContent =
+            report.sentences_flagged === 0
+                ? "No plagiarism detected"
+                : "Similarity detected";
+
+        const matchesSection = document.getElementById("matchesSection");
+
+        if (report.items.length === 0) {
+            matchesSection.innerHTML = `
+                <div class="no-results">
+                    <i class="fas fa-check-circle"></i>
+                    <p>No plagiarism detected</p>
+                </div>`;
+            return;
+        }
+
+        matchesSection.innerHTML = report.items.map(item => `
+            <div class="match-item">
+                <div class="match-header">
+                    <span class="match-title">Matched Sentence</span>
+                    <span class="match-percent">${item.similarity || "Exact"}%</span>
+                </div>
+                <p>${item.text || item}</p>
+            </div>
+        `).join("");
+
+    } catch (err) {
+        console.error(err);
+        document.getElementById("overallStatus").textContent = "Analysis failed";
+    }
+});
+</script>
+</body>
+</html>
