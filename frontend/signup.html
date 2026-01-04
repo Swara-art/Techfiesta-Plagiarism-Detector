@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sign Up - PlagiCheck AI | PixelCrafters</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <!-- Header -->
+    <header class="header">
+        <nav class="nav-container">
+            <div class="logo">
+                <i class="fas fa-shield-alt"></i>
+                PlagiCheck AI
+            </div>
+            <ul class="nav-menu">
+                <li><a href="index.html">Home</a></li>
+                <li><a href="dashboard.html">Dashboard</a></li>
+                <li><a href="upload.html">Upload</a></li>
+            </ul>
+            <div class="mobile-toggle" onclick="toggleMobileMenu()">
+                <i class="fas fa-bars"></i>
+            </div>
+        </nav>
+    </header>
+
+    <!-- Signup Form -->
+    <section class="auth-container">
+        <div class="auth-card">
+            <div style="text-align: center; margin-bottom: 2rem;">
+                <i class="fas fa-user-plus" style="font-size: 3rem; color: var(--secondary);"></i>
+            </div>
+            <h2><i class="fas fa-user-plus"></i> Create Account</h2>
+            <p style="text-align: center; color: #6b7280; margin-bottom: 2rem;">
+                Join PixelCrafters PlagiCheck - Free for Hackathon users
+            </p>
+            
+            <form id="signupForm">
+                <div class="form-group">
+                    <label><i class="fas fa-user"></i> Full Name</label>
+                    <input type="text" id="signupName" placeholder="Enter your full name" required>
+                </div>
+                <div class="form-group">
+                    <label><i class="fas fa-envelope"></i> Email</label>
+                    <input type="email" id="signupEmail" placeholder="Enter your email" required>
+                </div>
+                <div class="form-group">
+                    <label><i class="fas fa-lock"></i> Password</label>
+                    <input type="password" id="signupPassword" placeholder="Create a password (min 6 chars)" minlength="6" required>
+                </div>
+                <div class="form-group">
+                    <label><i class="fas fa-lock-open"></i> Confirm Password</label>
+                    <input type="password" id="signupConfirmPassword" placeholder="Confirm your password" required>
+                </div>
+                <button type="submit" class="btn btn-primary" id="signupBtn">
+                    <i class="fas fa-user-plus"></i> Create Account
+                </button>
+            </form>
+            
+            <div style="text-align: center; margin-top: 1.5rem; padding-top: 1.5rem; border-top: 1px solid #e2e8f0;">
+                <p style="color: #6b7280; margin-bottom: 1.2rem;">Already have an account?</p>
+                <a href="login.html" class="btn" style="background: var(--primary); color: white; text-decoration: none; padding: 1rem;">
+                    <i class="fas fa-sign-in-alt"></i> Sign In Instead
+                </a>
+            </div>
+            
+            <div id="signupMessage" style="margin-top: 1rem; text-align: center; display: none;"></div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="footer-content">
+            <div class="footer-section">
+                <h3><i class="fas fa-shield-alt"></i> PlagiCheck AI</h3>
+                <p><strong>PixelCrafters</strong> - Hackathon 2026</p>
+            </div>
+        </div>
+        <div class="footer-bottom">
+            <p>&copy; 2026 PixelCrafters. All rights reserved. | Hackathon Project</p>
+        </div>
+    </footer>
+
+    <script>
+    // Signup Form Handler (unchanged)
+    document.getElementById('signupForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        
+        const name = document.getElementById('signupName').value;
+        const email = document.getElementById('signupEmail').value;
+        const password = document.getElementById('signupPassword').value;
+        const confirmPassword = document.getElementById('signupConfirmPassword').value;
+        const signupBtn = document.getElementById('signupBtn');
+        const messageDiv = document.getElementById('signupMessage');
+        
+        // Validation
+        if (password !== confirmPassword) {
+            showMessage('Passwords do not match!', 'error');
+            return;
+        }
+        
+        if (password.length < 6) {
+            showMessage('Password must be at least 6 characters!', 'error');
+            return;
+        }
+        
+        // Show loading
+        signupBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Creating Account...';
+        signupBtn.disabled = true;
+        messageDiv.style.display = 'none';
+        
+        // Check if user already exists
+        setTimeout(() => {
+            let userData = JSON.parse(localStorage.getItem('plagicheck_users') || '[]');
+            
+            if (userData.find(u => u.email === email)) {
+                showMessage('Email already registered! <a href="login.html" style="color: var(--primary);">Login instead?</a>', 'error');
+                signupBtn.innerHTML = '<i class="fas fa-user-plus"></i> Try Again';
+                signupBtn.disabled = false;
+                return;
+            }
+            
+            // Create new user
+            const newUser = {
+                id: Date.now(),
+                name: name,
+                email: email,
+                password: password,
+                joined: new Date().toLocaleDateString()
+            };
+            
+            userData.push(newUser);
+            localStorage.setItem('plagicheck_users', JSON.stringify(userData));
+            localStorage.setItem('plagicheck_user', JSON.stringify(newUser));
+            
+            showMessage('Account created successfully! Redirecting to dashboard...', 'success');
+            
+            setTimeout(() => {
+                window.location.href = 'dashboard.html';
+            }, 2000);
+        }, 1500);
+        
+        function showMessage(message, type) {
+            messageDiv.innerHTML = `
+                <div style="color: ${type === 'success' ? 'var(--secondary)' : '#ef4444'}; padding: 1rem; border-radius: 10px; background: ${type === 'success' ? '#f0fdf4' : '#fef2f2'};">
+                    <i class="fas fa-${type === 'success' ? 'check-circle' : 'exclamation-circle'}"></i> ${message}
+                </div>
+            `;
+            messageDiv.style.display = 'block';
+            signupBtn.innerHTML = '<i class="fas fa-user-plus"></i> Create Account';
+            signupBtn.disabled = false;
+        }
+    });
+
+    // REMOVED: No auto-redirect on signup page
+</script>
+
+</body>
+</html>

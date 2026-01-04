@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Upload Document - Plagiarism Checker</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+
+    <!-- ✅ Backend URL -->
+    <script>
+        const BACKEND_BASE_URL = "http://127.0.0.1:8000";
+    </script>
+
+    <style>
+        /* ===== UI UNCHANGED ===== */
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        .upload-container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+        .upload-header {
+            background: linear-gradient(135deg, #4f46e5, #7c3aed);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+        .upload-header h1 { font-size: 2.2rem; margin-bottom: 10px; font-weight: 700; }
+        .upload-header p { opacity: 0.9; font-size: 1.1rem; }
+        .upload-body { padding: 40px; }
+        .upload-area {
+            border: 3px dashed #e2e8f0;
+            border-radius: 15px;
+            padding: 60px 40px;
+            text-align: center;
+            cursor: pointer;
+            background: #f8fafc;
+            margin-bottom: 30px;
+        }
+        .upload-area.dragover { border-color: #4f46e5; background: #eff6ff; }
+        .upload-icon { font-size: 4rem; color: #64748b; margin-bottom: 20px; }
+        .file-input { display: none; }
+        .file-list {
+            background: white;
+            border: 2px solid #e2e8f0;
+            border-radius: 12px;
+            margin-bottom: 25px;
+        }
+        .file-item {
+            padding: 15px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .upload-btn {
+            width: 100%;
+            padding: 16px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            border-radius: 12px;
+            border: none;
+            cursor: pointer;
+            background: linear-gradient(135deg, #4f46e5, #7c3aed);
+            color: white;
+        }
+        .upload-btn:disabled { opacity: 0.6; cursor: not-allowed; }
+        .progress-container { display: none; margin-top: 15px; }
+        .progress-bar { height: 8px; background: #e2e8f0; border-radius: 4px; }
+        .progress-fill {
+            height: 100%;
+            width: 0%;
+            background: linear-gradient(90deg, #10b981, #059669);
+            transition: width 0.3s ease;
+        }
+    </style>
+</head>
+
+<body>
+<div class="upload-container">
+    <div class="upload-header">
+        <h1><i class="fas fa-upload"></i> Upload Your Document</h1>
+        <p>Drag & drop or click to upload files for plagiarism analysis</p>
+    </div>
+
+    <div class="upload-body">
+        <div class="upload-area" id="uploadArea">
+            <div class="upload-icon"><i class="fas fa-cloud-upload-alt"></i></div>
+            <p>Drop file here or click to browse</p>
+            <input type="file" id="fileInput" class="file-input">
+        </div>
+
+        <div class="file-list" id="fileList"></div>
+
+        <!-- ✅ IMPORTANT: type="button" -->
+        <button type="button" class="upload-btn" id="uploadBtn" disabled>
+            🚀 Analyze File
+        </button>
+
+        <div class="progress-container" id="progressContainer">
+            <div class="progress-bar">
+                <div class="progress-fill" id="progressFill"></div>
+            </div>
+            <p id="progressText">Uploading...</p>
+        </div>
+    </div>
+</div>
+
+<script>
+let selectedFile = null;
+
+const uploadArea = document.getElementById("uploadArea");
+const fileInput = document.getElementById("fileInput");
+const uploadBtn = document.getElementById("uploadBtn");
+const fileList = document.getElementById("fileList");
+
+uploadArea.onclick = () => fileInput.click();
+
+fileInput.onchange = (e) => {
+    selectedFile = e.target.files[0];
+    if (!selectedFile) return;
+
+    fileList.innerHTML = `
+        <div class="file-item">
+            <span>${selectedFile.name}</span>
+            <button onclick="clearFile()">❌</button>
+        </div>
+    `;
+    uploadBtn.disabled = false;
+};
+
+function clearFile() {
+    selectedFile = null;
+    fileInput.value = "";
+    fileList.innerHTML = "";
+    uploadBtn.disabled = true;
+}
+
+uploadBtn.addEventListener("click", async () => {
+    if (!selectedFile) return;
+
+    const progress = document.getElementById("progressContainer");
+    const fill = document.getElementById("progressFill");
+    progress.style.display = "block";
+    fill.style.width = "30%";
+
+    try {
+        const formData = new FormData();
+        formData.append("file", selectedFile);
+
+        const response = await fetch(
+            `${BACKEND_BASE_URL}/assignments/upload`,
+            { method: "POST", body: formData }
+        );
+
+        if (!response.ok) throw new Error("Upload failed");
+
+        fill.style.width = "70%";
+
+        const result = await response.json();
+        console.log("Upload success:", result);
+
+        // ✅ STORE assignment_id
+        sessionStorage.setItem("assignment_id", result.assignment_id);
+
+        fill.style.width = "100%";
+
+        setTimeout(() => {
+            window.location.href = "results.html";
+        }, 600);
+
+    } catch (err) {
+        console.error(err);
+        alert("Error uploading file. Please try again.");
+        progress.style.display = "none";
+        fill.style.width = "0%";
+    }
+});
+</script>
+</body>
+</html>

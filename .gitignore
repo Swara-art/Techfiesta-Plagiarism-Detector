@@ -213,3 +213,11 @@ cython_debug/
 marimo/_static/
 marimo/_lsp/
 __marimo__/
+
+# Ignore uploaded files
+backend/data/uploads/
+
+# Ignore extracted text files
+*.txt
+*.pdf
+TechFiesta/data/extracted/
