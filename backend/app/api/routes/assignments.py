@@ -45,4 +45,5 @@ async def upload_assignment(file: UploadFile):
         "total_sentences": len(sentences),
         "preview_sentences": sentences[:5],  # small preview for UI/debug
         "status": "uploaded",
+        "message": "File processed successfully",
     }
