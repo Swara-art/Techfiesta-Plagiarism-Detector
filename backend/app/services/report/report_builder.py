@@ -8,10 +8,6 @@ def build_report(
     flagged_items: List[Dict],
     score: Dict
 ) -> Dict:
-    """
-    Stage 8: Final Report Builder
-    Aggregates all analysis stages into final output
-    """
 
     report_items = []
 

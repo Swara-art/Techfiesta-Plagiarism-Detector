@@ -1,0 +1,5 @@
+Machine learning is a branch of artificial intelligence that focuses on building systems that learn from data.
+It allows computers to improve performance without being explicitly programmed.
+
+In supervised learning, models are trained using labeled datasets so they can learn the correct outputs.
+Unsupervised learning finds hidden patterns and structures in data that does not have labels.

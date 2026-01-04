@@ -1,4 +1,4 @@
-from typing import List, Dict
+from typing import List, Dict, Any
 
 def calculate_score(
     total_sentences: int,
@@ -26,6 +26,7 @@ def calculate_score(
 
 WEIGHTS = {
     "exact_match": 1.0,
+    "semantic": 1.0,       
     "paraphrase": 0.7,
     "ai_generated": 0.8
 }

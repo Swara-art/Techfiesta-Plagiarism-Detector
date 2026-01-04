@@ -7,7 +7,7 @@ SEMANTIC_UPPER_BOUND = 0.85
 TOP_K = 5
 
 def detect_paraphrase(embedding):
-    collection = get_collection("student_text")
+    collection = get_collection("corpus_plagiarism")
 
     return collection.query(
         query_embeddings=[embedding],

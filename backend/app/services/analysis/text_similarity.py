@@ -1,5 +1,5 @@
 # app/services/analysis/text_similarity.py
-from typing import List
+from typing import List, Dict, Any
 from sentence_transformers import SentenceTransformer
 import re
 from app.services.analysis.paraphrase import ParaphraseDetector
@@ -22,6 +22,7 @@ class EmbeddingService:
 
 
 SIMILARITY_THRESHOLD = 0.72 
+EXACT_MATCH_THRESHOLD = 0.90
 
 
 class SemanticSimilarityService:
@@ -33,15 +34,14 @@ class SemanticSimilarityService:
         if count == 0:
             raise RuntimeError("Corpus collection is EMPTY")
 
-    def analyze(self, sentences: list[str]):
-        results = []
+    def analyze(self, sentences: List[str]) -> List[Dict[str, Any]]:
+        results: List[Dict[str, Any]] = []
 
-        for sentence in sentences:
+        for idx, sentence in enumerate(sentences):
             embedding = self.embedder.embed(sentence)
-
             matches = self.chroma.query(embedding, top_k=3)
 
-            flagged = []
+            flagged_matches = []
 
             for doc, meta, dist in zip(
                 matches["documents"][0],
@@ -50,21 +50,39 @@ class SemanticSimilarityService:
             ):
                 similarity = 1 - dist
 
+                # only compare against corpus
                 if meta.get("type") != "corpus":
                     continue
 
                 if similarity >= SIMILARITY_THRESHOLD:
-                    flagged.append({
+                    flagged_matches.append({
                         "matched_text": doc,
-                        "source": meta["source"],
+                        "source": meta.get("source", "Unknown"),
                         "similarity": round(similarity, 3),
                     })
 
-            if flagged:
-                results.append({
-                    "sentence": sentence,
-                    "matches": flagged
-                })
+            if not flagged_matches:
+                continue
+
+            # sentence-level confidence = best match similarity
+            best = max(flagged_matches, key=lambda m: m["similarity"])
+
+            # decide type for scoring
+            flag_type = "exact_match" if best["similarity"] >= EXACT_MATCH_THRESHOLD else "semantic"
+
+            results.append({
+                "sentence_id": idx,
+                "sentence": sentence,
+                "type": flag_type,                 
+                "confidence": best["similarity"],  
+                "source": best["source"],          
+                "matches": flagged_matches         
+            })
+            
+            count = self.chroma.collection.count()
+        
+        if count == 0:
+            raise RuntimeError("Corpus collection is EMPTY")
 
         return results
     
@@ -82,3 +100,5 @@ def run_paraphrase_analysis(sentences, corpus_sentences):
         paraphrase_results.extend(matches)
 
     return paraphrase_results
+
+
