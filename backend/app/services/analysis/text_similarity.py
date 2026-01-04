@@ -2,6 +2,7 @@
 from typing import List
 from sentence_transformers import SentenceTransformer
 import re
+from app.services.analysis.paraphrase import ParaphraseDetector
 
 _SENTENCE_SPLIT_REGEX = re.compile(r'(?<=[.!?])\s+')
 
@@ -20,7 +21,7 @@ class EmbeddingService:
         ).tolist()
 
 
-SIMILARITY_THRESHOLD = 0.72  # 🔥 FIXED (0.75 was borderline)
+SIMILARITY_THRESHOLD = 0.72 
 
 
 class SemanticSimilarityService:
@@ -49,7 +50,6 @@ class SemanticSimilarityService:
             ):
                 similarity = 1 - dist
 
-                # 🔐 STRICT corpus-only check
                 if meta.get("type") != "corpus":
                     continue
 
@@ -67,3 +67,18 @@ class SemanticSimilarityService:
                 })
 
         return results
+    
+paraphrase_detector = ParaphraseDetector()
+
+def run_paraphrase_analysis(sentences, corpus_sentences):
+    paraphrase_results = []
+
+    for idx, sentence in enumerate(sentences):
+        matches = paraphrase_detector.detect(
+            sentence_id=idx,
+            sentence=sentence,
+            corpus_sentences=corpus_sentences
+        )
+        paraphrase_results.extend(matches)
+
+    return paraphrase_results
