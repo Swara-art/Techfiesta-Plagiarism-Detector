@@ -221,3 +221,7 @@ backend/data/uploads/
 *.txt
 *.pdf
 TechFiesta/data/extracted/
+# Chroma vector database files
+chroma_store/
+*.sqlite3
+*.bin
